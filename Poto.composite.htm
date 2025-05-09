@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="en"> 
+ <head></head> 
+ <body> 
+  <h1> Hello </h1> 
+  <div>
+    i am AR please enter the photo and composite , 
+   <br> whit my AI 
+  </div> 
+  <meta charset="UTF-8"> 
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"> 
+  <title>AI Image Compressor</title> 
+  <style>
+    body {
+      font-family: sans-serif;
+      padding: 1rem;
+      margin: 0;
+      background: #f9f9f9;
+      text-align: center;
+    }
+
+    .button {
+      padding: 10px 20px;
+      margin: 10px;
+      border: 2px solid transparent;
+      background: linear-gradient(270deg, #007bff, #00c8ff, #00ff88, #ff00c8, #ff9800);
+      background-size: 1000% 1000%;
+      color: white;
+      cursor: pointer;
+      border-radius: 6px;
+      animation: rainbow 5s ease infinite;
+      transition: all 0.3s;
+      display: inline-block;
+      font-weight: bold;
+    }
+
+    .button:hover {
+      opacity: 0.9;
+    }
+
+    @keyframes rainbow {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+
+    .hidden { display: none; }
+    .loading { display: none; color: #007bff; font-weight: bold; }
+    .error { color: red; display: none; margin-top: 10px; }
+    .format-select {
+      margin: 1rem auto;
+      padding: 0.5rem;
+      border-radius: 5px;
+      border: 1px solid #007bff;
+      font-size: 1rem;
+    }
+    #imageOutput img {
+      max-width: 100%;
+      height: auto;
+      margin: 1rem 0;
+    }
+    .ad-container {
+      background: #e0e0e0;
+      padding: 10px;
+      margin: 10px auto;
+      max-width: 600px;
+      border: 1px dashed #999;
+    }
+
+    @media (max-width: 600px) {
+      .button, .format-select {
+        width: 90%;
+      }
+    }
+  </style> 
+  <div class="ad-container" id="ad-top"> <!-- AdSense Top Placeholder --> 
+   <p>Top Advertisement</p> 
+  </div> 
+  <h1>AI Image Compressor</h1> 
+  <div class="loading" id="loading">
+    Processing... Please wait 
+  </div> 
+  <div class="error" id="error"></div> <label class="button" for="imageInput">Upload Image</label> 
+  <input type="file" id="imageInput" accept="image/*" class="hidden"> <select class="format-select" id="formatSelect"> <option value="jpeg">JPEG</option> <option value="png">PNG</option> </select> 
+  <p>AI Suggested Quality: <span id="aiQuality">-</span></p> 
+  <div id="qualityControls"> <label>Manual Quality: <span id="manualQuality">0.8</span></label> 
+   <input type="range" id="qualityRange" min="0.1" max="1" step="0.1" value="0.8"> 
+  </div> <button class="button" id="compressBtn">Compress</button> 
+  <div id="imageOutput"></div> 
+  <div class="ad-container" id="ad-bottom"> <!-- AdSense Bottom Placeholder --> 
+   <p>Bottom Advertisement</p> 
+  </div> 
+  <script>
+    const imageInput = document.getElementById('imageInput');
+    const formatSelect = document.getElementById('formatSelect');
+    const qualityRange = document.getElementById('qualityRange');
+    const compressBtn = document.getElementById('compressBtn');
+
+    imageInput.addEventListener('change', handleImageUpload);
+    formatSelect.addEventListener('change', () => {
+      document.getElementById('qualityControls').style.display = 
+        formatSelect.value === 'jpeg' ? 'block' : 'none';
+    });
+
+    function handleImageUpload() {
+      const file = this.files[0];
+      if (!file) return;
+      showLoading();
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const img = new Image();
+        img.onload = function() {
+          suggestQuality(file, img);
+          hideLoading();
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function suggestQuality(file, img) {
+      const resolution = img.width * img.height;
+      const sizeMB = file.size / (1024 * 1024);
+      let quality = resolution > 4e6 || sizeMB > 3 ? 0.5 :
+                    resolution > 2e6 || sizeMB > 1.5 ? 0.6 :
+                    resolution > 1e6 || sizeMB > 1 ? 0.7 : 0.8;
+      document.getElementById('aiQuality').textContent = quality;
+      qualityRange.value = quality;
+      document.getElementById('manualQuality').textContent = quality;
+    }
+
+    compressBtn.addEventListener('click', () => {
+      const file = imageInput.files[0];
+      if (!file) return showError('Please select an image first');
+      showLoading();
+      const quality = parseFloat(qualityRange.value);
+      const format = formatSelect.value;
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const img = new Image();
+        img.onload = function() {
+          const canvas = document.createElement('canvas');
+          canvas.width = img.width;
+          canvas.height = img.height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0);
+          canvas.toBlob(blob => {
+            const url = URL.createObjectURL(blob);
+            const fileName = `compressed.${format}`;
+            showCompressedResult(url, fileName);
+            hideLoading();
+          }, `image/${format}`, format === 'jpeg' ? quality : 1);
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    });
+
+    function showCompressedResult(url, fileName) {
+      const output = document.getElementById('imageOutput');
+      output.innerHTML = `<img src="${url}"><br>
+        <a class="button" href="${url}" download="${fileName}">Download</a>`;
+    }
+
+    function showError(msg) {
+      const err = document.getElementById('error');
+      err.textContent = msg;
+      err.style.display = 'block';
+      setTimeout(() => err.style.display = 'none', 4000);
+    }
+
+    function showLoading() {
+      document.getElementById('loading').style.display = 'block';
+    }
+
+    function hideLoading() {
+      document.getElementById('loading').style.display = 'none';
+    }
+  </script> 
+ </body>
+</html>
